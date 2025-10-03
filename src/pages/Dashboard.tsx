@@ -26,7 +26,7 @@ interface Deadline {
   id: number;
   title: string;
   course: string;
-  dueDate: string;
+  due_date: string;
 }
 
 interface Group {
@@ -34,7 +34,7 @@ interface Group {
   name: string;
   course: string;
   members: number;
-  maxMembers: number;
+  max_members: number;
 }
 
 const Dashboard: React.FC = () => {
@@ -46,40 +46,41 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const fetchDashboardData = async () => {
+      if (!user) return;
       setIsLoading(true);
+
       try {
-        // Attempt to fetch real user profile
-        if (user?.id) {
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
+        const today = format(new Date(), 'yyyy-MM-dd');
 
-          if (profileError) {
-            console.warn('No profile found, using mock data:', profileError.message);
-          } else {
-            console.log('User profile fetched:', profile);
-            // You can extend to fetch actual classes, deadlines, groups here
-          }
-        }
+        // Fetch today's classes
+        const { data: classesData, error: classesError } = await supabase
+          .from('classes')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('date', today)
+          .order('time', { ascending: true });
 
-        // Mock data fallback
-        setTodayClasses([
-          { id: 1, name: 'Introduction to Computer Science', time: '09:00 - 10:30', location: 'Room 101' },
-          { id: 2, name: 'Web Development', time: '13:00 - 14:30', location: 'Lab 3' },
-        ]);
+        if (classesError) throw classesError;
+        setTodayClasses(classesData || []);
 
-        setUpcomingDeadlines([
-          { id: 1, title: 'Submit Project Proposal', course: 'Software Engineering', dueDate: '2023-11-15' },
-          { id: 2, title: 'Complete Quiz', course: 'Database Systems', dueDate: '2023-11-10' },
-          { id: 3, title: 'Group Presentation', course: 'Web Development', dueDate: '2023-11-20' },
-        ]);
+        // Fetch upcoming deadlines
+        const { data: deadlinesData, error: deadlinesError } = await supabase
+          .from('deadlines')
+          .select('*')
+          .eq('user_id', user.id)
+          .gte('due_date', today)
+          .order('due_date', { ascending: true });
 
-        setActiveGroups([
-          { id: 1, name: 'Team Alpha', course: 'Software Engineering', members: 3, maxMembers: 4 },
-          { id: 2, name: 'Web Warriors', course: 'Web Development', members: 4, maxMembers: 4 },
-        ]);
+        if (deadlinesError) throw deadlinesError;
+        setUpcomingDeadlines(deadlinesData || []);
+
+        // Fetch active groups
+        const { data: groupsData, error: groupsError } = await supabase
+          .from('groups')
+          .select('*')
+          .contains('user_ids', [user.id]); // array column
+        if (groupsError) throw groupsError;
+        setActiveGroups(groupsData || []);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       } finally {
@@ -145,7 +146,6 @@ const Dashboard: React.FC = () => {
                 <CheckCircle size={20} className="mr-2 text-accent-500" />
                 Upcoming Deadlines
               </h2>
-              <button className="text-sm text-primary-600 hover:text-primary-500">Add Task</button>
             </div>
             {upcomingDeadlines.length === 0 ? (
               <p className="text-secondary-500 dark:text-secondary-400">No upcoming deadlines.</p>
@@ -158,21 +158,8 @@ const Dashboard: React.FC = () => {
                       <div className="flex items-center text-sm text-secondary-500 dark:text-secondary-400 mt-1">
                         <Book size={14} className="mr-1" />
                         {deadline.course} <span className="mx-2">•</span> Due{' '}
-                        {format(new Date(deadline.dueDate), 'MMM d')}
+                        {format(new Date(deadline.due_date), 'MMM d')}
                       </div>
-                    </div>
-                    <div className="ml-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          new Date(deadline.dueDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-                            ? 'bg-accent-100 text-accent-800 dark:bg-accent-900 dark:text-accent-200'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                        }`}
-                      >
-                        {new Date(deadline.dueDate) < new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-                          ? 'Soon'
-                          : 'Upcoming'}
-                      </span>
                     </div>
                   </div>
                 ))}
@@ -187,9 +174,6 @@ const Dashboard: React.FC = () => {
                 <Users size={20} className="mr-2 text-primary-500" />
                 Active Groups
               </h2>
-              <Link to="/courses" className="text-sm text-primary-600 hover:text-primary-500">
-                View all
-              </Link>
             </div>
             {activeGroups.length === 0 ? (
               <p className="text-secondary-500 dark:text-secondary-400">You are not part of any groups.</p>
@@ -201,20 +185,8 @@ const Dashboard: React.FC = () => {
                       <h3 className="font-medium text-secondary-900 dark:text-secondary-100">{group.name}</h3>
                       <div className="flex items-center text-sm text-secondary-500 dark:text-secondary-400 mt-1">
                         <Book size={14} className="mr-1" /> {group.course}{' '}
-                        <span className="mx-2">•</span> <Users size={14} className="mr-1" />{' '}
-                        {group.members}/{group.maxMembers} members
+                        <span className="mx-2">•</span> <Users size={14} className="mr-1" /> {group.members}/{group.max_members} members
                       </div>
-                    </div>
-                    <div className="ml-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          group.members === group.maxMembers
-                            ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                            : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        }`}
-                      >
-                        {group.members === group.maxMembers ? 'Full' : 'Open'}
-                      </span>
                     </div>
                   </div>
                 ))}
@@ -223,45 +195,6 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Quick Actions */}
-      <div className="bg-white dark:bg-secondary-800 rounded-2xl shadow-soft p-6">
-        <h2 className="text-lg font-semibold text-secondary-900 dark:text-secondary-100 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          <Link
-            to="/courses"
-            className="flex flex-col items-center justify-center p-4 bg-secondary-50 dark:bg-secondary-700 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors"
-          >
-            <Book size={24} className="text-primary-600 dark:text-primary-400 mb-2" />
-            <span className="text-sm font-medium text-secondary-900 dark:text-secondary-100">My Courses</span>
-          </Link>
-          <Link
-            to="/resources"
-            className="flex flex-col items-center justify-center p-4 bg-secondary-50 dark:bg-secondary-700 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors"
-          >
-            <FileText size={24} className="text-primary-600 dark:text-primary-400 mb-2" />
-            <span className="text-sm font-medium text-secondary-900 dark:text-secondary-100">Resources</span>
-          </Link>
-          <Link
-            to="/messages"
-            className="flex flex-col items-center justify-center p-4 bg-secondary-50 dark:bg-secondary-700 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors"
-          >
-            <MessageSquare size={24} className="text-primary-600 dark:text-primary-400 mb-2" />
-            <span className="text-sm font-medium text-secondary-900 dark:text-secondary-100">Messages</span>
-          </Link>
-          <button className="flex flex-col items-center justify-center p-4 bg-secondary-50 dark:bg-secondary-700 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors">
-            <Calendar size={24} className="text-primary-600 dark:text-primary-400 mb-2" />
-            <span className="text-sm font-medium text-secondary-900 dark:text-secondary-100">Calendar</span>
-          </button>
-          <Link
-            to="/profile"
-            className="flex flex-col items-center justify-center p-4 bg-secondary-50 dark:bg-secondary-700 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors"
-          >
-            <User size={24} className="text-primary-600 dark:text-primary-400 mb-2" />
-            <span className="text-sm font-medium text-secondary-900 dark:text-secondary-100">Profile</span>
-          </Link>
-        </div>
-      </div>
     </div>
   );
 };
