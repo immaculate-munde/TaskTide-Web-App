@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Sun, Moon } from "lucide-react";
+import { ArrowRight, Sun, Moon, Menu, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 
@@ -32,6 +32,7 @@ const Landing = () => {
   const [darkMode, setDarkMode] = useState(
     localStorage.getItem("theme") === "dark"
   );
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (darkMode) {
@@ -46,9 +47,11 @@ const Landing = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-primary-50 to-white dark:from-secondary-900 dark:to-secondary-800">
       {/* Navbar */}
-      <header className="flex justify-between items-center px-8 py-4 shadow-sm bg-white/80 dark:bg-secondary-900/80 backdrop-blur-sm">
+      <header className="flex justify-between items-center px-6 sm:px-8 py-4 shadow-sm bg-white/80 dark:bg-secondary-900/80 backdrop-blur-sm fixed w-full top-0 z-50">
         <h1 className="text-2xl font-bold text-primary-600">TaskTide</h1>
-        <nav className="flex items-center space-x-6">
+
+        {/* Desktop Nav */}
+        <nav className="hidden md:flex items-center space-x-6">
           <Link
             to="/login"
             className="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 font-medium transition-colors"
@@ -65,13 +68,58 @@ const Landing = () => {
             onClick={() => setDarkMode(!darkMode)}
             className="p-2 rounded-lg bg-secondary-200 dark:bg-secondary-700 hover:bg-secondary-300 dark:hover:bg-secondary-600 transition"
           >
-            {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-secondary-800" />}
+            {darkMode ? (
+              <Sun className="w-5 h-5 text-yellow-400" />
+            ) : (
+              <Moon className="w-5 h-5 text-secondary-800" />
+            )}
           </button>
         </nav>
+
+        {/* Mobile Hamburger */}
+        <button
+          className="md:hidden p-2 rounded-lg bg-secondary-200 dark:bg-secondary-700"
+          onClick={() => setMenuOpen(!menuOpen)}
+        >
+          {menuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        </button>
       </header>
 
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="md:hidden flex flex-col items-center gap-4 bg-white dark:bg-secondary-900 py-6 shadow-lg fixed top-16 w-full z-40">
+          <Link
+            to="/login"
+            className="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 font-medium"
+            onClick={() => setMenuOpen(false)}
+          >
+            Sign In
+          </Link>
+          <Link
+            to="/signup"
+            className="px-5 py-2 rounded-xl bg-primary-600 text-white hover:bg-primary-700 font-semibold"
+            onClick={() => setMenuOpen(false)}
+          >
+            Get Started
+          </Link>
+          <button
+            onClick={() => {
+              setDarkMode(!darkMode);
+              setMenuOpen(false);
+            }}
+            className="p-2 rounded-lg bg-secondary-200 dark:bg-secondary-700"
+          >
+            {darkMode ? (
+              <Sun className="w-5 h-5 text-yellow-400" />
+            ) : (
+              <Moon className="w-5 h-5 text-secondary-800" />
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Hero Section */}
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-6 sm:px-12">
+      <main className="flex-1 flex flex-col items-center justify-center text-center px-6 sm:px-12 pt-28">
         <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold text-secondary-900 dark:text-white max-w-3xl leading-tight">
           Organize Courses, Stay Connected, Succeed Together
         </h2>
@@ -92,6 +140,7 @@ const Landing = () => {
             Learn More
           </a>
         </div>
+
         {/* Hero Illustration */}
         <div className="mt-12">
           <img
@@ -107,7 +156,7 @@ const Landing = () => {
         <motion.div
           className="flex gap-8"
           animate={{ x: ["0%", "-100%"] }}
-          transition={{ repeat: Infinity, duration: 60, ease: "linear" }}
+          transition={{ repeat: Infinity, duration: 40, ease: "linear" }}
         >
           {[...features, ...features].map((feature, index) => (
             <motion.div
